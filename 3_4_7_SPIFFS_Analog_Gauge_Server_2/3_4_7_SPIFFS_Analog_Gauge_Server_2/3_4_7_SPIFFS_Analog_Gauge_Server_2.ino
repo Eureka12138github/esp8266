@@ -1,85 +1,87 @@
 /**********************************************************************
 项目名称/Project          : 零基础入门学用物联网
-程序名称/Program name     : 3_4_3_SPIFFS_Multi_Text_Server
+程序名称/Program name     : 3_4_7_SPIFFS_Analog_Gauge_Server_2
 团队/Team                : 太极创客团队 / Taichi-Maker (www.taichi-maker.com)
 作者/Author              : CYNO朔
-日期/Date（YYYYMMDD）     : 20200220
-程序目的/Purpose          : 
-演示如何通过ESP8266开发板建立的多个网页文本框获取用户输入的信息。
+日期/Date（YYYYMMDD）     : 20200211
+程序目的/Purpose          : 建立网络服务器，使用指针图表的形式显示模拟输入引脚数值
 -----------------------------------------------------------------------
 修订历史/Revision History  
 日期/Date    作者/Author      参考号/Ref    修订说明/Revision Description
+20200218     CYNO朔             0.01        一致性调整
 -----------------------------------------------------------------------
 本示例程序为太极创客团队制作的《零基础入门学用物联网》中示例程序。
 该教程为对物联网开发感兴趣的朋友所设计和制作。如需了解更多该教程的信息，请参考以下网页：
 http://www.taichi-maker.com/homepage/esp8266-nodemcu-iot/
+
+本示例程序参考以下网络资源中信息，程序作者在此资源基础上进行了修改和调整使其更加适合学习使用。
+
 ***********************************************************************/
+
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
 #include <ESP8266WebServer.h>
 #include <FS.h>  
- 
-ESP8266WiFiMulti wifiMulti;         // 建立ESP8266WiFiMulti对象
- 
-ESP8266WebServer esp8266_server(80);// 建立ESP8266WebServer对象，该对象用于响应HTTP请求。监听端口（80）
 
-void setup(void){
+ESP8266WiFiMulti wifiMulti;         // 建立ESP8266WiFiMulti对象
+
+ESP8266WebServer esp8266_server(80);// 建立esp8266网站服务器对象
+ 
+void setup() {
   Serial.begin(9600);        
   Serial.println("");
   
-  wifiMulti.addAP("511", "511511511"); // 将需要连接的一系列WiFi ID和密码输入这里
+  wifiMulti.addAP("ssid_from_AP_1", "your_password_for_AP_1"); // 将需要连接的一系列WiFi ID和密码输入这里
   wifiMulti.addAP("ssid_from_AP_2", "your_password_for_AP_2"); // ESP8266-NodeMCU再启动后会扫描当前网络
   wifiMulti.addAP("ssid_from_AP_3", "your_password_for_AP_3"); // 环境查找是否有这里列出的WiFi ID。如果有
-  Serial.println("Connecting ...");                            // 则尝试使用此处存储的密码进行连接。
-  
+  Serial.println("Connecting ...");
+
   int i = 0;  
   while (wifiMulti.run() != WL_CONNECTED) { // 尝试进行wifi连接。
     delay(1000);
     Serial.print(i++); Serial.print(' ');
   }
-  
+
   // WiFi连接成功后将通过串口监视器输出连接成功信息 
   Serial.println('\n');
   Serial.print("Connected to ");
   Serial.println(WiFi.SSID());              // 通过串口监视器输出连接的WiFi名称
   Serial.print("IP address:\t");
-  Serial.println(WiFi.localIP());           // 通过串口监视器输出ESP8266-NodeMCU的IP
-
+  Serial.println(WiFi.localIP()); 
+ 
   if(SPIFFS.begin()){                       // 启动闪存文件系统
     Serial.println("SPIFFS Started.");
   } else {
     Serial.println("SPIFFS Failed to Start.");
-  }                      
-                 
+  }
+  
   //初始化网络服务器
-  esp8266_server.on("/LED-Control", handleLEDControl);   
-  esp8266_server.onNotFound(handleUserRequest); // 处理其它网络请求
-
+//  esp8266_server.on("/",handleRoot);      // 处理首页请求
+  esp8266_server.on("/getADC",handleADC); //Reads ADC function is called from out index.html
+  esp8266_server.onNotFound(handleUserRequest); // 处理网络请求
+  
   // 启动网站服务
   esp8266_server.begin();
   Serial.println("HTTP server started");
 }
  
-void loop(void){
-  esp8266_server.handleClient();  //处理网络请求
-}                                
-                                                                         
-void handleLEDControl(){
-  // 从浏览器发送的信息中获取控制数值（字符串格式）
-  String value1 = esp8266_server.arg("value1"); 
-  String value2 = esp8266_server.arg("value2");
-  String value3 = esp8266_server.arg("value3");
-
-  // 将用户输入的信息通过串口监视器显示出来
-  Serial.print("value1 = ");Serial.println(value1);
-  Serial.print("value2 = ");Serial.println(value2);
-  Serial.print("value3 = ");Serial.println(value3);
-  //123345
-  
-  // 建立基本网页信息显示当前数值以及返回链接
-  String httpBody = "value1: " + value1 + "<br> value2: " + value2 + "<br> value3: " + value3 + "<p><a href=\"/LED.html\"><-LED Page</a></p>";           
-  esp8266_server.send(200, "text/html", httpBody);
+void loop() {
+ esp8266_server.handleClient();
 }
+
+void handleADC(){
+  int a = analogRead(A0);
+  a = map(a,0,1023,0,100);
+  String adc = String(a);
+  Serial.println(adc);
+  esp8266_server.send(200, "text/plain",adc);
+}
+/*
+void handleRoot(){
+  esp8266_server.sendHeader("Location", "/index.html", true);   
+  esp8266_server.send(302, "text/plain","");
+}
+*/
 
 // 处理用户浏览器的HTTP访问
 void handleUserRequest() {         

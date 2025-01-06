@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <!-- 设置文档字符编码为UTF-8，支持中文和其他多语言字符 -->
+    <meta charset="UTF-8">
+    <!-- 设置网页标题，显示在浏览器标签上 -->
+    <title>太极创客-零基础入门学用物联网教程</title>
+</head>
+
+<body>
+    <!-- 将内容居中显示（不推荐使用，建议使用CSS进行布局） -->
+    <center>
+        <!-- 太极创客网站链接和logo，点击后在新标签页中打开 -->
+        <a href="http://www.taichi-maker.com" target="_blank">
+            <img src="/img/taichi-maker.jpg" alt="太极创客">
+        </a>
+        
+        <!-- 控制LED的按钮部分 -->
+        <div id="demo">
+            <!-- 标题，说明以下按钮可控制ESP8266开发板引脚 -->
+            <h1>以下按钮可控制ESP8266开发板引脚</h1>
+            <br>
+            <!-- 点亮LED按钮，点击后调用sendData(1)函数 -->
+            <button type="button" onclick="sendData(1)">点亮 LED</button>
+            <!-- 关闭LED按钮，点击后调用sendData(0)函数 -->
+            <button type="button" onclick="sendData(0)">熄灭 LED</button><br>
+        </div>
+
+        <!-- 显示LED状态 -->
+		<!-- <div>用于定义一个逻辑单元，并赋予一个单元一个ID，便于CSS格式定义或者Javascript操作 -->
+        <div>
+            <!-- LED引脚状态，初始值为"NA" -->
+            LED引脚状态 : <span id="LEDState">NA</span><br>
+			 <!-- 这里的<span>可以理解为一个括号，在其中作出的定义或者外部对之进行的修改也只限于括号内 -->
+			  <!-- 这样就可以只更新LEDState(现默认值为NA)而不用刷新整个网页了 -->
+        </div>
+        <br><br>
+        
+        <!-- 显示A0引脚的实时读数 -->
+        <div id="demo">
+            <!-- 标题，说明以下为模拟输入引脚A0的实时读数 -->
+            <h1>以下为模拟输入引脚A0的实时读数</h1>
+            <div>
+                <!-- A0引脚读数，初始值为"0" -->
+                A0引脚读数 : <span id="ADCValue">0</span><br>
+            </div>
+            <!-- 页面描述，说明此页面的功能 -->
+            <p>此页面用于演示如何通过网页控制LED引脚以及将A0引脚读数实时显示于网页中。</p>
+            <!-- 教程链接，指向太极创客网站 -->
+            <p>本教程可在太极创客网站免费获取。太极创客网址： <a href="http://www.taichi-maker.com" target="_blank">www.taichi-maker.com</a></p>
+
+            <!-- JavaScript函数定义 -->
+            <script>
+                <!-- 控制LED状态的函数 -->
+                function sendData(led) {
+                    <!-- 创建一个新的XMLHttpRequest对象 -->
+                    var xhttp = new XMLHttpRequest();
+                    <!-- 设置onreadystatechange事件处理程序 -->
+                    xhttp.onreadystatechange = function() {
+                        <!-- 检查请求是否完成且成功（状态码200） -->
+                        if (this.readyState == 4 && this.status == 200) {
+                            <!-- 将服务器返回的响应文本设置为LEDState元素的内容 -->
+                            document.getElementById("LEDState").innerHTML =
+                            this.responseText;
+                        }
+                    };
+                    <!-- 打开一个GET请求，请求路径为setLED?LEDstate=1或setLED?LEDstate=0 -->
+                    xhttp.open("GET", "setLED?LEDstate="+led, true);
+                    <!-- 发送请求 -->
+                    xhttp.send();
+                }
+                
+                <!-- 定期获取A0引脚读数，每2秒调用一次getData函数 -->
+                setInterval(function() {
+                    <!-- 调用getData函数 -->
+                    getData();
+                }, 2000); // 2000毫秒更新一次
+                
+                <!-- 获取A0引脚读数的函数 -->
+                function getData() {
+                    <!-- 创建一个新的XMLHttpRequest对象 -->
+                    var xhttp = new XMLHttpRequest();
+                    <!-- 设置onreadystatechange事件处理程序 -->
+                    xhttp.onreadystatechange = function() {
+                        <!-- 检查请求是否完成且成功（状态码200） -->
+                        if (this.readyState == 4 && this.status == 200) {
+                            <!-- 将服务器返回的响应文本设置为ADCValue元素的内容 -->
+                            document.getElementById("ADCValue").innerHTML =
+                            this.responseText;
+                        }
+                    };
+                    <!-- 打开一个GET请求，请求路径为readADC -->
+                    xhttp.open("GET", "readADC", true);
+                    <!-- 发送请求 -->
+                    xhttp.send();
+                }
+            </script>
+        </div>
+    </center>
+</body>
+</html>

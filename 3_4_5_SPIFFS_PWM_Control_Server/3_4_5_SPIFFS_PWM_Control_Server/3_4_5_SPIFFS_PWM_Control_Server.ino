@@ -1,37 +1,45 @@
 /**********************************************************************
 项目名称/Project          : 零基础入门学用物联网
-程序名称/Program name     : 3_4_3_SPIFFS_Multi_Text_Server
+程序名称/Program name     : 3_4_5_SPIFFS_PWM_Control_Server
 团队/Team                : 太极创客团队 / Taichi-Maker (www.taichi-maker.com)
 作者/Author              : CYNO朔
-日期/Date（YYYYMMDD）     : 20200220
+日期/Date（YYYYMMDD）     : 20200211
 程序目的/Purpose          : 
-演示如何通过ESP8266开发板建立的多个网页文本框获取用户输入的信息。
+此程序用于演示如何通过网页图形界面控制ESP8266的PWM引脚
 -----------------------------------------------------------------------
 修订历史/Revision History  
 日期/Date    作者/Author      参考号/Ref    修订说明/Revision Description
+20200212    CYNO朔             0.01        添加了教程说明信息
+20200218    CYNO朔             0.02        一致性调整
 -----------------------------------------------------------------------
 本示例程序为太极创客团队制作的《零基础入门学用物联网》中示例程序。
 该教程为对物联网开发感兴趣的朋友所设计和制作。如需了解更多该教程的信息，请参考以下网页：
 http://www.taichi-maker.com/homepage/esp8266-nodemcu-iot/
+
+本示例程序参考以下网络资源中信息，程序作者在此资源基础上进行了修改和调整使其更加适合学习使用。
+https://circuits4you.com/2018/02/03/esp8266-nodemcu-adc-analog-value-on-dial-gauge/
 ***********************************************************************/
+
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
 #include <ESP8266WebServer.h>
 #include <FS.h>  
- 
-ESP8266WiFiMulti wifiMulti;         // 建立ESP8266WiFiMulti对象
- 
-ESP8266WebServer esp8266_server(80);// 建立ESP8266WebServer对象，该对象用于响应HTTP请求。监听端口（80）
 
-void setup(void){
+ESP8266WiFiMulti wifiMulti;         // 建立ESP8266WiFiMulti对象
+
+ESP8266WebServer esp8266_server(80);// 建立esp8266网站服务器对象
+
+void setup() {
   Serial.begin(9600);        
   Serial.println("");
-  
-  wifiMulti.addAP("511", "511511511"); // 将需要连接的一系列WiFi ID和密码输入这里
+    
+  pinMode(LED_BUILTIN, OUTPUT);     // 设置开发板内置LED引脚为输出模式
+
+  wifiMulti.addAP("ssid_from_AP_1", "your_password_for_AP_1"); // 将需要连接的一系列WiFi ID和密码输入这里
   wifiMulti.addAP("ssid_from_AP_2", "your_password_for_AP_2"); // ESP8266-NodeMCU再启动后会扫描当前网络
   wifiMulti.addAP("ssid_from_AP_3", "your_password_for_AP_3"); // 环境查找是否有这里列出的WiFi ID。如果有
   Serial.println("Connecting ...");                            // 则尝试使用此处存储的密码进行连接。
-  
+
   int i = 0;  
   while (wifiMulti.run() != WL_CONNECTED) { // 尝试进行wifi连接。
     delay(1000);
@@ -49,36 +57,32 @@ void setup(void){
     Serial.println("SPIFFS Started.");
   } else {
     Serial.println("SPIFFS Failed to Start.");
-  }                      
-                 
+  }
+  
   //初始化网络服务器
-  esp8266_server.on("/LED-Control", handleLEDControl);   
-  esp8266_server.onNotFound(handleUserRequest); // 处理其它网络请求
+  esp8266_server.on("/setLED",handlePWM); // 处理PWM设置请求
+  esp8266_server.onNotFound(handleUserRequest); // 处理网络请求
 
   // 启动网站服务
   esp8266_server.begin();
   Serial.println("HTTP server started");
 }
- 
-void loop(void){
-  esp8266_server.handleClient();  //处理网络请求
-}                                
-                                                                         
-void handleLEDControl(){
-  // 从浏览器发送的信息中获取控制数值（字符串格式）
-  String value1 = esp8266_server.arg("value1"); 
-  String value2 = esp8266_server.arg("value2");
-  String value3 = esp8266_server.arg("value3");
 
-  // 将用户输入的信息通过串口监视器显示出来
-  Serial.print("value1 = ");Serial.println(value1);
-  Serial.print("value2 = ");Serial.println(value2);
-  Serial.print("value3 = ");Serial.println(value3);
-  //123345
+void loop() {
+ esp8266_server.handleClient();   // 处理客户端请求
+}
+
+// 处理PWM设置请求并对引脚进行PWM设置
+void handlePWM(){
+  String pwmStr = esp8266_server.arg("pwm"); // 获取用户请求中的PWM数值
+  Serial.print("pwmStr = ");Serial.println(pwmStr);
   
-  // 建立基本网页信息显示当前数值以及返回链接
-  String httpBody = "value1: " + value1 + "<br> value2: " + value2 + "<br> value3: " + value3 + "<p><a href=\"/LED.html\"><-LED Page</a></p>";           
-  esp8266_server.send(200, "text/html", httpBody);
+  int pwmVal = pwmStr.toInt();              // 将用户请求中的PWM数值转换为整数
+  pwmVal = 1023 - map(pwmVal,0,100,0,1023); // 用户请求数值为0-100，转为0-1023
+  Serial.print("pwmVal = ");Serial.println(pwmVal);
+  
+  analogWrite(LED_BUILTIN, pwmVal);         // 实现PWM引脚设置
+  esp8266_server.send(200, "text/plain");//向客户端发送200响应信息
 }
 
 // 处理用户浏览器的HTTP访问
