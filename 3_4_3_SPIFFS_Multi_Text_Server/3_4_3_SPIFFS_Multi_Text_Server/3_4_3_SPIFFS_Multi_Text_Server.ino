@@ -1,34 +1,30 @@
 /**********************************************************************
 项目名称/Project          : 零基础入门学用物联网
-程序名称/Program name     : 3_4_1_SPIFFS_File_server
+程序名称/Program name     : 3_4_3_SPIFFS_Multi_Text_Server
 团队/Team                : 太极创客团队 / Taichi-Maker (www.taichi-maker.com)
 作者/Author              : CYNO朔
-日期/Date（YYYYMMDD）     : 20191109
+日期/Date（YYYYMMDD）     : 20200220
 程序目的/Purpose          : 
-当用户访问NodeMCU地址时，NodeMCU将会检查访问地址是否指向SPIFFS系统中的文件，并且
-将该文件显示于用户的浏览器中。如果访问地址所指向的文件无法在SPIFFS中找到，NodeMCU将会
-向用户发送404信息。
+演示如何通过ESP8266开发板建立的多个网页文本框获取用户输入的信息。
 -----------------------------------------------------------------------
 修订历史/Revision History  
 日期/Date    作者/Author      参考号/Ref    修订说明/Revision Description
-20200211     CYNO朔            0.01       修改了handleNotFound函数使其更直观
 -----------------------------------------------------------------------
 本示例程序为太极创客团队制作的《零基础入门学用物联网》中示例程序。
 该教程为对物联网开发感兴趣的朋友所设计和制作。如需了解更多该教程的信息，请参考以下网页：
 http://www.taichi-maker.com/homepage/esp8266-nodemcu-iot/
 ***********************************************************************/
-
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
 #include <ESP8266WebServer.h>
 #include <FS.h>  
+ 
+ESP8266WiFiMulti wifiMulti;         // 建立ESP8266WiFiMulti对象
+ 
+ESP8266WebServer esp8266_server(80);// 建立ESP8266WebServer对象，该对象用于响应HTTP请求。监听端口（80）
 
-ESP8266WiFiMulti wifiMulti;     // 建立ESP8266WiFiMulti对象
-
-ESP8266WebServer esp8266_server(80);    // 建立网络服务器对象，该对象用于响应HTTP请求。监听端口（80）
-
-void setup() {
-  Serial.begin(9600);          // 启动串口通讯
+void setup(void){
+  Serial.begin(9600);        
   Serial.println("");
   
   wifiMulti.addAP("511", "511511511"); // 将需要连接的一系列WiFi ID和密码输入这里
@@ -53,26 +49,45 @@ void setup() {
     Serial.println("SPIFFS Started.");
   } else {
     Serial.println("SPIFFS Failed to Start.");
-  }
-  //找到或没找到都用这个函数
-  esp8266_server.onNotFound(handleUserRequet);      // 告知系统如何处理用户请求
+  }                      
+                 
+  //初始化网络服务器
+  esp8266_server.on("/LED-Control", handleLEDControl);   
+  esp8266_server.onNotFound(handleUserRequest); // 处理其它网络请求
 
-  esp8266_server.begin();                           // 启动网站服务
+  // 启动网站服务
+  esp8266_server.begin();
   Serial.println("HTTP server started");
 }
+ 
+void loop(void){
+  esp8266_server.handleClient();  //处理网络请求
+}                                
+                                                                         
+void handleLEDControl(){
+  // 从浏览器发送的信息中获取控制数值（字符串格式）
+  String value1 = esp8266_server.arg("value1"); 
+  String value2 = esp8266_server.arg("value2");
 
-void loop(void) {
-  esp8266_server.handleClient();                    // 处理用户请求
+  // 将用户输入的信息通过串口监视器显示出来
+  Serial.print("value1 = ");Serial.println(value1);
+  Serial.print("value2 = ");Serial.println(value2);
+  
+  // 建立基本网页信息显示当前数值以及返回链接
+  String httpBody = "value1: " + value1 + "<br> value2: " + value2 + "<p><a href=\"/LED.html\"><-LED Page</a></p>";           
+  esp8266_server.send(200, "text/html", httpBody);
 }
 
 // 处理用户浏览器的HTTP访问
-void handleUserRequet() {         
+void handleUserRequest() {         
      
-  // 获取用户请求网址信息
-  String webAddress = esp8266_server.uri();
+  // 获取用户请求资源(Request Resource）
+  String reqResource = esp8266_server.uri();
+  Serial.print("reqResource: ");
+  Serial.println(reqResource);
   
-  // 通过handleFileRead函数处处理用户访问
-  bool fileReadOK = handleFileRead(webAddress);
+  // 通过handleFileRead函数处处理用户请求资源
+  bool fileReadOK = handleFileRead(reqResource);
 
   // 如果在SPIFFS无法找到用户访问的资源，则回复404 (Not Found)
   if (!fileReadOK){                                                 
@@ -80,16 +95,16 @@ void handleUserRequet() {
   }
 }
 
-bool handleFileRead(String path) {            //处理浏览器HTTP访问
+bool handleFileRead(String resource) {            //处理浏览器HTTP访问
 
-  if (path.endsWith("/")) {                   // 如果访问地址以"/"为结尾
-    path = "/index.html";                     // 则将访问地址修改为/index.html便于SPIFFS访问
+  if (resource.endsWith("/")) {                   // 如果访问地址以"/"为结尾
+    resource = "/index.html";                     // 则将访问地址修改为/index.html便于SPIFFS访问
   } 
   
-  String contentType = getContentType(path);  // 获取文件类型
+  String contentType = getContentType(resource);  // 获取文件类型
   
-  if (SPIFFS.exists(path)) {                     // 如果访问的文件可以在SPIFFS中找到
-    File file = SPIFFS.open(path, "r");          // 则尝试打开该文件
+  if (SPIFFS.exists(resource)) {                     // 如果访问的文件可以在SPIFFS中找到
+    File file = SPIFFS.open(resource, "r");          // 则尝试打开该文件
     esp8266_server.streamFile(file, contentType);// 并且将该文件返回给浏览器
     file.close();                                // 并且关闭文件
     return true;                                 // 返回true
