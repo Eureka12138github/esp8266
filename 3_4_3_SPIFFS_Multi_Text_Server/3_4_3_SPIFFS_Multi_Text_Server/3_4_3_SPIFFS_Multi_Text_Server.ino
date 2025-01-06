@@ -68,13 +68,15 @@ void handleLEDControl(){
   // 从浏览器发送的信息中获取控制数值（字符串格式）
   String value1 = esp8266_server.arg("value1"); 
   String value2 = esp8266_server.arg("value2");
+  String value3 = esp8266_server.arg("value3");
 
   // 将用户输入的信息通过串口监视器显示出来
   Serial.print("value1 = ");Serial.println(value1);
   Serial.print("value2 = ");Serial.println(value2);
+  Serial.print("value3 = ");Serial.println(value3);
   
   // 建立基本网页信息显示当前数值以及返回链接
-  String httpBody = "value1: " + value1 + "<br> value2: " + value2 + "<p><a href=\"/LED.html\"><-LED Page</a></p>";           
+  String httpBody = "value1: " + value1 + "<br> value2: " + value2 + "<br> value3: " + value3 + "<p><a href=\"/LED.html\"><-LED Page</a></p>";           
   esp8266_server.send(200, "text/html", httpBody);
 }
 
